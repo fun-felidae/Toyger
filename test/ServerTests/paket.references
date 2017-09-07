@@ -1,6 +1,4 @@
-FSharp.NET.Sdk
 Microsoft.DotNet.Watcher.Tools
-
-group Test
+group ServerTests
 FSharp.Core
 Expecto

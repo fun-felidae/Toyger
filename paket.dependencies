@@ -1,7 +1,7 @@
 source https://nuget.org/api/v2
+storage:none
 
 nuget FSharp.Core redirects: force
-nuget FSharp.NET.Sdk
 nuget Fable.JsonConverter
 nuget Suave
 nuget Microsoft.Extensions.Logging.Console
@@ -9,6 +9,7 @@ nuget System.Net.NetworkInformation
 nuget Newtonsoft.Json
 nuget jose-jwt
 
+nuget Fable.Core
 nuget Fable.Elmish.Browser
 nuget Fable.Elmish.Debugger
 nuget Fable.Elmish.React
@@ -16,7 +17,13 @@ nuget Fable.Elmish.React
 clitool dotnet-fable
 clitool Microsoft.DotNet.Watcher.Tools
 
-group Test
+group ServerTests
+  source https://nuget.org/api/v2
+  storage:none
+  nuget FSharp.Core redirects: force
+  nuget Expecto
+
+group UITests
   source https://nuget.org/api/v2
   framework >= net45
   nuget FSharp.Core redirects: force
@@ -26,5 +33,5 @@ group Test
 
 group Build
   source https://nuget.org/api/v2
-
+  framework >= net45
   nuget FAKE

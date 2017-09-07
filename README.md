@@ -1,23 +1,17 @@
-# Toyger
-Customer Relationship Management
-
-Inspiration - http://www.cventure.in/, https://www.hubspot.com/products/crm, https://www.zoho.com/crm/
-
-
-
 # A web stack designed for developer happiness
 
 The following document describes the Fable + Suave sample project. You can see it running on azure at http://fable-suave.azurewebsites.net.
 
 ## Requirements
 
-- [Mono](http://www.mono-project.com/) on MacOS/Linux (on Windows .NET Framework is installed by default)
+- [Mono](http://www.mono-project.com/) on MacOS/Linux
+- [.NET Framework 4.6.2](https://support.microsoft.com/en-us/help/3151800/the--net-framework-4-6-2-offline-installer-for-windows) on Windows
 - [node.js](https://nodejs.org/) - JavaScript runtime
 - [yarn](https://yarnpkg.com/) - Package manager for npm modules
 
 > On OS X/macOS, make sure you have OpenSSL installed and symlinked correctly, as described here: [https://www.microsoft.com/net/core#macos](https://www.microsoft.com/net/core#macos).
 
-[dotnet SDK 1.0.4](https://www.microsoft.com/net/core) is required but it'll be downloaded automatically by the build script if not installed (see below). Other tools like Paket or FAKE will also be installed by the build script.
+[dotnet SDK 2.0.0](https://www.microsoft.com/net/core) is required but it'll be downloaded automatically by the build script if not installed (see below). Other tools like Paket or FAKE will also be installed by the build script.
 
 ## Development mode
 
@@ -33,13 +27,186 @@ This command will call in **build.fsx** the target "Run". It will start in paral
 - **dotnet watch msbuild /t:TestAndRun** in [test/serverTests](src/ServerTests) to run unit tests and then server (note: Suave is launched on port **8085**)
 
 Previously, the build script should download all dependencies like .NET Core SDK, Fable... If you have problems with the download of the .NET Core SDK via the `build.cmd` or `build.sh` script, please install the SDK manually from [here](https://github.com/dotnet/core/blob/master/release-notes/download-archives/1.0.4-download.md). Verify
-that you have at least SDK version 1.0.4 installed (`dotnet --version`) and then rerun the build script.
+that you have at least SDK version 2.0.0 installed (`dotnet --version`) and then rerun the build script.
 
 You can now edit files in `src/Server` or `src/Client` and recompile + browser refresh will be triggered automatically.
 
 ![Development mode](https://cloud.githubusercontent.com/assets/57396/23174149/af93da32-f85b-11e6-8de2-01c274f54a27.gif)
 
 Usually you can just keep this mode running and running. Just edit files, see the browser refreshing and commit + push with git.
+
+## Getting started
+### Create a new page
+This topic will guide you throw creating a new page. After every section you should check whether you can see the changes in your browser.
+#### Minimal setup
+Let's say we want to call our new page *Tomato*
+
+1. Adjust the `Messages.fs` and register our Tomato page as a page and define the corresponding hash value.
+
+        type Page = 
+            | Home 
+            | Login
+            | WishList
+            | Tomato // <- our page
+
+        let toHash =
+            function
+            | Home -> "#home"
+            | Login -> "#login"
+            | WishList -> "#wishlist"
+            | Tomato -> "#tomato" // <- our page
+
+2. Adjust the following functions inside the `App.fs`:
+
+    - pageParser function
+
+            let pageParser : Parser<Page->_,_> =
+                oneOf
+                    [ map Home (s "home")
+                    map Page.Login (s "login")                   
+                    map WishList (s "wishlist")
+                    map Page.Tomato (s "tomato") ]
+
+    - urlUpdate function
+
+            let urlUpdate (result:Page option) model =
+                match result with
+                // ...
+                | Some (Tomato as page) ->
+                    { model with Page = page }, []
+
+    - viewPage function
+
+            let viewPage model dispatch =
+                match model.Page with
+                //...
+                | Page.Tomato ->
+                    [ words 60 "Tomatoes taste good!"]
+                // ...
+3. Try it out by navigating to `http://localhost:8080/#tomato`
+You should see `Tomatoes taste good!`
+#### Adding the page to the menu
+Inside `src/Client/pages/Menu.fs`
+
+        let view (model:Model) dispatch =
+            div [ centerStyle "row" ] [ 
+                // ...
+                yield viewLink Page.Tomato "Tomato"
+                // ..
+
+#### Move code to separate Tomato.fs files
+1. Add a new .fs file to the pages folder: `src/Client/pages/Tomato.fs`. 
+Add the `Tomato.fs` to your .fsproj file and move it above Apps.fs.
+
+        <Compile Include="pages/Tomato.fs" />
+        <Compile Include="App.fs" />
+
+2. Place following code in the `Tomato.fs`     
+
+            module Client.Tomato
+            open Style
+            let view() = 
+                [ words 60 "Tomatoes taste VERY good!"]
+
+3. remove old 'view' code from the  viewPage function in `App.fs` and replace it 
+    with:
+
+            | Page.Tomato ->
+                Tomato.view()
+
+
+#### Define a model for the page that holds the state
+1. Replace the code in `Tomato.fs` with
+
+            module Client.Tomato
+            open Style
+
+            type Model = {
+                Color:string
+            }
+            let init() = 
+                { Color = "red" }
+            let view model = 
+                [ 
+                    words 60 "Tomatoes taste VERY good!"
+                    words 20 (sprintf "The color of a tomato is %s"  model.Color)
+                ]
+
+2. Adjust the SubModel DU
+
+        type SubModel =
+            | NoSubModel
+            | LoginModel of Login.Model
+            | WishListModel of WishList.Model
+            | TomatoModel of Tomato.Model
+
+
+3. updateUrl should now call the init function and place the Tomato.Model as SubModel
+            
+            | Some (Tomato as page) ->
+                let m = Tomato.init()
+                { model with Page = page; SubModel = TomatoModel m }, []
+
+
+4. viewPage function should call the view function of the the Tomato module and pass in the submodel if it is a TomatoModel
+
+                | Page.Tomato ->
+                    match model.SubModel with
+                    | TomatoModel m -> Tomato.view m
+                    | _ -> [ ]
+#### Make it interactive (update the state)
+1. add new message DU in `Messages.fs`
+
+            type TomatoMsg =
+                | ChangeColor of string
+
+2. add message to AppMsg DU in `Messages.fs`
+
+            type AppMsg = 
+            // ..
+                | TomatoMsg of TomatoMsg
+            // ..
+
+3. adjust the match pattern in the update function of `App.fs`
+
+            | AppMsg.TomatoMsg msg, TomatoModel tm ->
+                let color = match msg with ChangeColor c -> c
+                let tm = { tm with Color = color }
+                { model with SubModel = TomatoModel tm }, []
+            
+            | AppMsg.TomatoMsg msg, _ -> model, [] // just to make the compiler happy
+
+4. Change the `Tomato.view` function to:
+
+            let view model dispatch = 
+                [ 
+                    words 60 "Tomatoes taste VERY good!"
+                    words 20 (sprintf "The color of a tomato is %s" model.Color)
+                    br []
+                    button [
+                        ClassName ("btn btn-primary") 
+                        OnClick (fun _ -> dispatch (TomatoMsg (TomatoMsg.ChangeColor "green")))] 
+                        [ str "No, my tomatoes are green!" ]
+                ]
+
+
+### Getting rid of erros in chrome
+- Either comment out the lines in `App.fs` 
+
+        #if DEBUG
+        |> Program.withDebugger
+        #endif
+
+- Or install the Redux DevTools as a Chrome Extensions (recommanded)
+Only one error remains, when visiting the WebApp the first time.
+
+### Getting FSharp.Data in the backend
+Sadly, DotnetCore 2.0 currently does not support Type Providers, so you can not just add the nuget packages of FSharp.Data to your backend project.
+- Solution clone repo and only reference some files that you need and doesn't contain any Type Providers
+### Additional notes
+- you can not call the functions of Fable inside the F# interactive.
+
+
 
 ## Debugging
 
@@ -137,4 +304,3 @@ Deploy to the flex environment with a custom runtime like this is might take som
 
 - [@forki](https://github.com/forki)
 - [@alfonsogarciacaro](https://github.com/alfonsogarciacaro)
-
