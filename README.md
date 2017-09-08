@@ -1,3 +1,10 @@
+# Toyger
+  Customer Relationship Management
+
+Inspiration - http://www.cventure.in/, https://www.hubspot.com/products/crm, https://www.zoho.com/crm/
+
+
+
 # A web stack designed for developer happiness
 
 The following document describes the Fable + Suave sample project. You can see it running on azure at http://fable-suave.azurewebsites.net.
